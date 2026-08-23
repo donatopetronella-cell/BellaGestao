@@ -1,10 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { z } from 'zod'
 import { requireAuthOrThrow, requirePermission } from '@/lib/auth/context'
 import { writeAudit } from '@/lib/audit'
-import { presentError } from '@/lib/errors'
 import {
   completeOnboarding,
   saveOpeningHours,
@@ -15,15 +13,7 @@ import { openingHoursSchema, salonSetupSchema } from '@/validators/tenant'
 import { changePasswordSchema } from '@/validators/auth'
 import { changePassword } from '@/lib/auth/service'
 import type { FormState } from './types'
-
-function fromZod(error: z.ZodError): FormState {
-  const fieldErrors: Record<string, string[]> = {}
-  for (const issue of error.issues) {
-    const key = issue.path.join('.') || 'form'
-    fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message]
-  }
-  return { status: 'error', message: 'Revise os campos destacados.', fieldErrors }
-}
+import { fail, fromZod } from './form'
 
 export async function saveSalonAction(
   _prev: FormState,
@@ -61,8 +51,7 @@ export async function saveSalonAction(
       summary: 'Dados do salão atualizados',
     })
   } catch (error) {
-    const presented = presentError(error)
-    return { status: 'error', message: presented.message }
+    return fail(error)
   }
 
   revalidatePath('/configuracoes')
@@ -98,7 +87,7 @@ export async function saveOpeningHoursAction(
     await saveOpeningHours(context.tenant.id, parsed.data)
     await setOnboardingStep(context.tenant.id, 2)
   } catch (error) {
-    return { status: 'error', message: presentError(error).message }
+    return fail(error)
   }
 
   revalidatePath('/onboarding')
@@ -124,7 +113,7 @@ export async function finishOnboardingAction(): Promise<FormState> {
       entityId: context.tenant.id,
     })
   } catch (error) {
-    return { status: 'error', message: presentError(error).message }
+    return fail(error)
   }
   revalidatePath('/', 'layout')
   return { status: 'success', message: 'Onboarding concluído.' }
@@ -152,8 +141,7 @@ export async function changePasswordAction(
       parsed.data.password,
     )
   } catch (error) {
-    const presented = presentError(error)
-    return { status: 'error', message: presented.message }
+    return fail(error)
   }
 
   return { status: 'success', message: 'Senha alterada com sucesso.' }

@@ -1,8 +1,9 @@
 # BellaGestão — Arquitetura
 
-> Documento de referência da **ETAPA 1**. Descreve as decisões que sustentam
-> todas as fases seguintes. O que já está implementado está marcado com ✅; o
-> que está projetado (banco pronto, telas nas próximas fases) com 🚧.
+> Documento de referência da arquitetura. Descreve as decisões que sustentam
+> todas as fases. O que já está implementado está marcado com ✅; o que está
+> projetado (banco pronto, telas nas próximas fases) com 🚧.
+> **Atualizado após a Fase 2 (MVP operacional).**
 
 ---
 
@@ -231,9 +232,13 @@ RBAC com cinco perfis e catálogo de **50 permissões** (`src/lib/rbac`):
 | `/entrar`, `/cadastrar`, `/esqueci-senha`, `/redefinir-senha`, `/verificar-email` | ✅ |
 | `/onboarding` | ✅ (passos 1 e 2 funcionais, demais linkados) |
 | `/painel` dashboard | ✅ |
+| `/agenda` (dia, semana, arrastar e soltar) | ✅ |
+| `/clientes`, `/clientes/[id]`, `/clientes/importar` | ✅ (CRM, ficha capilar, histórico químico, fotos, importação CSV) |
+| `/profissionais`, `/profissionais/[id]` | ✅ (jornada, produtividade, comissão) |
+| `/servicos` | ✅ (categorias, preço por profissional, insumos ligados) |
+| `/caixa` | ✅ (abertura, fechamento, sangria, reforço) |
 | `/configuracoes`, `/configuracoes/assinatura`, `/conta`, `/notificacoes`, `/sem-permissao` | ✅ |
-| `/agenda`, `/clientes`, `/profissionais`, `/servicos` | 🚧 fase 2 |
-| `/produtos`, `/estoque`, `/vendas`, `/caixa`, `/financeiro`, `/comissoes`, `/relatorios` | 🚧 fase 3 |
+| `/produtos`, `/estoque`, `/vendas`, `/financeiro`, `/comissoes`, `/relatorios` | 🚧 fase 3 |
 | `/marketing`, `/whatsapp`, `/fidelidade` | 🚧 fase 4 |
 | `/bella-ia` | 🚧 fase 5 |
 | `/{slug}` agenda online pública | 🚧 fase 4 |
@@ -268,14 +273,19 @@ Implementado ✅
 | --- | --- |
 | `registerAction`, `loginAction`, `logoutAction`, `switchTenantAction`, `forgotPasswordAction`, `resetPasswordAction`, `verifyEmailAction` | `src/server/actions/auth.ts` |
 | `saveSalonAction`, `saveOpeningHoursAction`, `finishOnboardingAction`, `changePasswordAction` | `src/server/actions/settings.ts` |
+| CRUD de serviços e categorias | `src/server/actions/services.ts` |
+| CRUD de profissionais e jornada de trabalho | `src/server/actions/professionals.ts` |
+| CRUD de clientes, ficha capilar, histórico químico, fotos, importação CSV | `src/server/actions/clients.ts` |
+| Criar/editar/reagendar/duplicar/cancelar/finalizar atendimento, busca de clientes e horários livres | `src/server/actions/appointments.ts` |
+| Abrir/fechar caixa, sangria/reforço | `src/server/actions/cash.ts` |
 | `GET /api/health` | `src/app/api/health/route.ts` |
+| `GET /api/fotos/[id]` (fotos protegidas por sessão + RLS) | `src/app/api/fotos/[id]/route.ts` |
 
 Previsto 🚧
 
 | Fase | Interface |
 | --- | --- |
-| 2 | ações de agenda (criar/reagendar/cancelar/finalizar), clientes, profissionais, serviços; `GET /api/search` |
-| 3 | caixa, vendas, estoque, financeiro, comissões, exportações (PDF/Excel/CSV) |
+| 3 | vendas (PDV), estoque com baixa automática, financeiro, comissões (fechamento mensal), relatórios exportáveis (PDF/Excel/CSV) |
 | 4 | `POST /api/webhooks/whatsapp`, envio de templates, agenda online pública |
 | 5 | `POST /api/ai/ask` (consulta restrita ao tenant), insights |
 | 6 | `POST /api/webhooks/mercadopago`, checkout, troca de plano, painel do SaaS |
@@ -299,8 +309,34 @@ Migrações rodam pela conexão do dono (`DIRECT_DATABASE_URL`); a aplicação u
 | Fase | Escopo | Estado |
 | --- | --- | --- |
 | 1 | Projeto, autenticação, multi-tenant, RBAC, layout, dashboard | ✅ |
-| 2 | Agenda, clientes (ficha capilar/histórico químico), profissionais, serviços | 🚧 |
-| 3 | Financeiro, caixa, comissões, estoque, produtos, vendas, relatórios | 🚧 |
+| 2 | Agenda (dia/semana, arrastar e soltar, finalização com pagamento), clientes (ficha capilar, histórico químico, fotos, importação), profissionais (jornada, produtividade), serviços, caixa | ✅ |
+| 3 | Financeiro, comissões (fechamento mensal), estoque com baixa automática, produtos, vendas (PDV), relatórios exportáveis | 🚧 |
 | 4 | WhatsApp, agenda online, CRM/campanhas, fidelidade | 🚧 |
 | 5 | Bella IA, insights, automações | 🚧 |
 | 6 | Assinaturas (Mercado Pago), planos, painel administrativo do SaaS | 🚧 |
+
+### Fase 2 — destaques de implementação
+
+* **Agenda**: grid por profissional com faixas de expediente/intervalo
+  desenhadas a partir da jornada de cada um, criação por clique na célula,
+  arrastar-e-soltar para reagendar (`rescheduleAppointment`, com a mesma
+  checagem de conflito da criação), duplicar em 7 dias, fluxo de status
+  restrito por uma máquina de estados (`APPOINTMENT_STATUS_FLOW` em
+  `src/features/appointments/status.ts` — nunca é possível pular direto para
+  "Finalizado" por uma simples troca de status).
+* **Finalização** (`finishAppointment`, em transação única): cria a venda e os
+  pagamentos, lança a comissão de cada serviço, registra a receita, alimenta o
+  caixa aberto (se houver), atualiza a última visita da cliente e credita
+  pontos de fidelidade quando o programa está ativo.
+* **Ficha capilar e histórico químico**: fórmula em JSON (`tone`/`grams`),
+  reaproveitável em `hair_formulas`; o diálogo de novo registro permite
+  aplicar uma fórmula anterior com um clique.
+* **Fotos**: nunca públicas — servidas por `/api/fotos/[id]`, autenticado e
+  restrito por permissão, lendo de um `StorageDriver` com dois adaptadores
+  (sistema de arquivos local em desenvolvimento, Supabase Storage quando
+  configurado).
+* **Importação de clientes**: mesmo parser de CSV roda no navegador (pré-visão
+  instantânea) e no servidor (validação final) — a pré-visão é conveniência,
+  nunca autoridade.
+* **Caixa**: `computeExpectedCash()` soma apenas movimentações em dinheiro; o
+  fechamento registra a diferença entre o valor contado e o esperado.

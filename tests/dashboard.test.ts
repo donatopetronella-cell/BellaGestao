@@ -11,10 +11,17 @@ import {
 
 const TIMEZONE = 'America/Sao_Paulo'
 
+import { startOfDayInTimeZone } from '@/lib/dates'
+
+/**
+ * `hour`, as wall-clock time in America/Sao_Paulo, on the current São Paulo
+ * calendar day. Anchoring to that (instead of the UTC calendar day) keeps the
+ * test correct even when it runs close to the UTC midnight boundary, where
+ * "today in UTC" and "today in São Paulo" briefly disagree.
+ */
 function todayAt(hour: number): Date {
-  const date = new Date()
-  date.setUTCHours(hour + 3, 0, 0, 0)
-  return date
+  const start = startOfDayInTimeZone(new Date(), TIMEZONE)
+  return new Date(start.getTime() + hour * 60 * 60_000)
 }
 
 describe('dashboard', () => {

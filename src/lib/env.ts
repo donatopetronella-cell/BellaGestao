@@ -13,6 +13,7 @@ const schema = z.object({
 
   // Optional integrations, wired in later phases.
   SUPABASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   SUPABASE_STORAGE_BUCKET: z.string().default('client-photos'),
   OPENAI_API_KEY: z.string().optional(),

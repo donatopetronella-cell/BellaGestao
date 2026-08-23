@@ -21,7 +21,6 @@ import {
 import { getAuthContext } from '@/lib/auth/context'
 import { requestMeta, writeAudit } from '@/lib/audit'
 import { getAdminDb } from '@/lib/db'
-import { presentError } from '@/lib/errors'
 import { rateLimit } from '@/lib/rate-limit'
 import {
   forgotPasswordSchema,
@@ -30,28 +29,7 @@ import {
   resetPasswordSchema,
 } from '@/validators/auth'
 import type { FormState } from './types'
-
-function fail(error: unknown): FormState {
-  const presented = presentError(error)
-  return {
-    status: 'error',
-    message: presented.message,
-    fieldErrors: presented.details,
-  }
-}
-
-function fromZod(error: z.ZodError): FormState {
-  const fieldErrors: Record<string, string[]> = {}
-  for (const issue of error.issues) {
-    const key = issue.path.join('.') || 'form'
-    fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message]
-  }
-  return {
-    status: 'error',
-    message: 'Revise os campos destacados.',
-    fieldErrors,
-  }
-}
+import { fail, fromZod } from './form'
 
 export async function registerAction(
   _prev: FormState,

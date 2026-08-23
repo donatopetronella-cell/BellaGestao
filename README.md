@@ -4,11 +4,13 @@ Plataforma SaaS multiempresa de gestão para salões de beleza, cabeleireiros,
 manicures, nail designers, designers de sobrancelha, maquiadores, esteticistas,
 spas, studios e profissionais autônomos.
 
-> **Estado atual: Fase 1 (Fundação) concluída.**
-> Projeto, autenticação, isolamento multi-tenant com Row Level Security, RBAC,
-> layout responsivo, onboarding, configurações e dashboard com dados reais.
+> **Estado atual: Fases 1 (Fundação) e 2 (MVP operacional) concluídas.**
+> Autenticação, isolamento multi-tenant com Row Level Security, RBAC, layout
+> responsivo, onboarding, dashboard, agenda (dia/semana, arrastar e soltar),
+> clientes (CRM, ficha capilar, histórico químico, fotos, importação CSV),
+> profissionais, serviços e caixa — tudo com dados reais do banco.
 > O modelo de dados completo (56 tabelas) já está migrado; os módulos das
-> fases 2 a 6 estão mapeados em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
+> fases 3 a 6 estão mapeados em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
 ---
 
@@ -142,9 +144,13 @@ desenvolvimento o próprio `.env` serve.
 | Arquivo | Cobertura |
 | --- | --- |
 | `tests/tenant-isolation.test.ts` | **Tenant A não acessa nada do Tenant B**: leitura, busca por id, update, delete, insert forjado, agregação e SQL bruto; garante ainda que toda tabela com `tenant_id` tem RLS + policy e que a conexão da app não é superusuária |
+| `tests/phase2-isolation.test.ts` | o mesmo princípio aplicado aos domínios da Fase 2: serviços, profissionais, clientes e agenda nunca leem ou escrevem em outro salão |
 | `tests/auth.test.ts` | cadastro, login, sessão (só o hash é gravado), recuperação e troca de senha, verificação de e-mail |
 | `tests/rbac.test.ts` | matriz de permissões dos cinco perfis e exceções por membro |
 | `tests/dashboard.test.ts` | indicadores calculados do banco, escopo do profissional e ausência de vazamento entre salões |
+| `tests/appointments.test.ts` | conflito de horário, reagendamento, máquina de estados de status, finalização (venda, comissão, receita, caixa, fidelidade) |
+| `tests/cash.test.ts` | abertura/fechamento de caixa, sangria, reforço, cálculo do dinheiro esperado na gaveta |
+| `tests/client-import.test.ts` | parser de CSV: detecção de colunas, delimitador, datas BR/ISO, duplicidade, arquivo inválido |
 | `tests/utils.test.ts` | formatação, datas com fuso do salão, tradução de erros, rate limit |
 
 ---

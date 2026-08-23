@@ -137,3 +137,102 @@ export function resolveRange(
 export function isDashboardRange(value: string): value is DashboardRange {
   return ['today', '7d', '30d', 'month', 'year'].includes(value)
 }
+
+/** Wall-clock parts of an instant, in the given zone. */
+export function zonedParts(date: Date, timeZone: string) {
+  return partsInTimeZone(date, timeZone)
+}
+
+/** Minutes since midnight of an instant, in the given zone. */
+export function minutesInDay(date: Date, timeZone: string): number {
+  const parts = partsInTimeZone(date, timeZone)
+  return parts.hour * 60 + parts.minute
+}
+
+/** `2026-08-25` as seen in the given zone. */
+export function toDateKey(date: Date, timeZone: string): string {
+  const parts = partsInTimeZone(date, timeZone)
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(
+    parts.day,
+  ).padStart(2, '0')}`
+}
+
+/**
+ * Converts a local date (`2026-08-25`) plus minutes since midnight, as typed by
+ * someone sitting in the salon, into the UTC instant to persist.
+ * Two passes so a DST boundary resolves correctly.
+ */
+export function zonedToUtc(
+  dateKey: string,
+  minutes: number,
+  timeZone: string,
+): Date {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  if (!year || !month || !day) {
+    throw new Error(`Invalid date: ${dateKey}`)
+  }
+  const guess = Date.UTC(year, month - 1, day, 0, 0, 0) + minutes * 60_000
+  const firstPass = new Date(guess - offsetMs(new Date(guess), timeZone))
+  return new Date(guess - offsetMs(firstPass, timeZone))
+}
+
+export function parseTimeToMinutes(value: string): number {
+  const [hours, minutes] = value.split(':').map(Number)
+  return (hours ?? 0) * 60 + (minutes ?? 0)
+}
+
+export function minutesToTime(minutes: number): string {
+  const normalized = Math.max(0, Math.min(24 * 60, Math.round(minutes)))
+  return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(
+    normalized % 60,
+  ).padStart(2, '0')}`
+}
+
+/** Weekday index (0 = Sunday) of an instant, in the given zone. */
+export function zonedWeekday(date: Date, timeZone: string): number {
+  const parts = partsInTimeZone(date, timeZone)
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay()
+}
+
+/** Monday-first week containing `dateKey`. */
+export function weekDateKeys(dateKey: string): string[] {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  const base = new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1))
+  const weekday = base.getUTCDay()
+  const monday = new Date(base)
+  monday.setUTCDate(base.getUTCDate() - ((weekday + 6) % 7))
+  return Array.from({ length: 7 }, (_, index) => {
+    const current = new Date(monday)
+    current.setUTCDate(monday.getUTCDate() + index)
+    return current.toISOString().slice(0, 10)
+  })
+}
+
+export function shiftDateKey(dateKey: string, days: number): string {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  const base = new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1))
+  base.setUTCDate(base.getUTCDate() + days)
+  return base.toISOString().slice(0, 10)
+}
+
+export function isValidDateKey(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value))
+}
+
+export const WEEKDAY_LABELS = [
+  'Domingo',
+  'Segunda',
+  'Terça',
+  'Quarta',
+  'Quinta',
+  'Sexta',
+  'Sábado',
+] as const
+
+export const WEEKDAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const
+
+/** `25/08` for the agenda header. */
+export function formatDateKeyShort(dateKey: string): string {
+  const [, month, day] = dateKey.split('-')
+  return `${day}/${month}`
+}
