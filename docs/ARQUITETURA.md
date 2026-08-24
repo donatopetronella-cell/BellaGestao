@@ -3,7 +3,7 @@
 > Documento de referência da arquitetura. Descreve as decisões que sustentam
 > todas as fases. O que já está implementado está marcado com ✅; o que está
 > projetado (banco pronto, telas nas próximas fases) com 🚧.
-> **Atualizado após a Fase 4 (WhatsApp, agenda online, marketing, fidelidade).**
+> **Atualizado após a Fase 5 (Bella IA, insights, automações).**
 
 ---
 
@@ -51,7 +51,7 @@ futuras integrações.
 
 ## 2. Arquitetura do banco
 
-56 tabelas, todas migradas. Agrupadas por domínio:
+57 tabelas, todas migradas. Agrupadas por domínio:
 
 | Domínio | Tabelas |
 | --- | --- |
@@ -70,7 +70,7 @@ futuras integrações.
 | SaaS | `plans`, `subscriptions`, `payments`, `webhook_events` |
 | Relacionamento | `whatsapp_templates`, `whatsapp_messages`, `campaigns`, `campaign_targets` |
 | Fidelidade | `loyalty_programs`, `loyalty_accounts`, `loyalty_transactions` |
-| Plataforma | `notifications`, `audit_logs` |
+| Plataforma | `notifications`, `audit_logs`, `ai_queries` |
 
 Convenções:
 
@@ -241,7 +241,7 @@ RBAC com cinco perfis e catálogo de **50 permissões** (`src/lib/rbac`):
 | `/produtos`, `/estoque`, `/vendas`, `/financeiro`, `/comissoes`, `/relatorios` | ✅ |
 | `/marketing`, `/whatsapp`, `/fidelidade` | ✅ |
 | `/{slug}` agenda online pública | ✅ |
-| `/bella-ia` | 🚧 fase 5 |
+| `/bella-ia` | ✅ |
 | `/admin/*` painel do SaaS | 🚧 fase 6 |
 
 As rotas 🚧 já existem, já exigem a permissão correta e mostram o que está
@@ -301,11 +301,17 @@ Implementado ✅ (Fase 4)
 | Programa de fidelidade e lançamentos manuais de pontos | `src/server/actions/loyalty.ts` |
 | Agenda online pública (`/{slug}`), sem sessão, com limite de tentativas | `src/server/actions/booking.ts` |
 
+Implementado ✅ (Fase 5)
+
+| Ação | Arquivo |
+| --- | --- |
+| Insights determinísticos (faturamento, clientes inativas, estoque baixo, top serviços) | `src/features/insights/service.ts` |
+| Bella IA — pergunta em linguagem natural, sempre fundamentada nos dados do tenant | `src/server/actions/ai.ts`, `src/lib/openai.ts` |
+
 Previsto 🚧
 
 | Fase | Interface |
 | --- | --- |
-| 5 | `POST /api/ai/ask` (consulta restrita ao tenant), insights |
 | 6 | `POST /api/webhooks/mercadopago`, checkout, troca de plano, painel do SaaS |
 
 ---
@@ -316,6 +322,10 @@ Previsto 🚧
 2. `20260822184500_row_level_security` — funções
    `app_current_tenant_id()`/`app_current_user_id()`, papel de aplicação,
    `ENABLE ROW LEVEL SECURITY` + policies em todas as tabelas.
+3. `20260824125850_ai_queries` — tabela `ai_queries` (histórico da Bella IA),
+   com sua própria policy de RLS (toda tabela nova precisa habilitar RLS na
+   própria migration; a varredura automática da migration 2 só cobriu o que
+   existia até então).
 
 Migrações rodam pela conexão do dono (`DIRECT_DATABASE_URL`); a aplicação usa
 `DATABASE_URL` (papel restrito).
@@ -330,7 +340,7 @@ Migrações rodam pela conexão do dono (`DIRECT_DATABASE_URL`); a aplicação u
 | 2 | Agenda (dia/semana, arrastar e soltar, finalização com pagamento), clientes (ficha capilar, histórico químico, fotos, importação), profissionais (jornada, produtividade), serviços, caixa | ✅ |
 | 3 | Financeiro, comissões (fechamento mensal), estoque com baixa automática, produtos, vendas (PDV), relatórios exportáveis | ✅ |
 | 4 | WhatsApp, agenda online, CRM/campanhas, fidelidade | ✅ |
-| 5 | Bella IA, insights, automações | 🚧 |
+| 5 | Bella IA, insights, automações | ✅ |
 | 6 | Assinaturas (Mercado Pago), planos, painel administrativo do SaaS | 🚧 |
 
 ### Fase 2 — destaques de implementação
@@ -385,3 +395,20 @@ Migrações rodam pela conexão do dono (`DIRECT_DATABASE_URL`); a aplicação u
   Reaproveita `getAvailableSlots`/`createAppointment` da agenda interna com
   `source: 'ONLINE'`; encontra a cliente pelo telefone ou cadastra uma nova.
   Limitada por `rateLimit()` (5 agendamentos / 5 min por IP).
+
+### Fase 5 — destaques de implementação
+
+* **Insights sempre determinísticos**: `getBellaInsights()`
+  (`src/features/insights/service.ts`) reaproveita `getDashboardData` (Fase 1)
+  e as listagens de clientes/produtos — faturamento do mês, taxa de retorno,
+  clientes inativas, estoque baixo e melhor profissional não dependem de IA
+  nenhuma; são os mesmos números do painel.
+* **Bella IA fundamentada, nunca inventada**: `askBellaIa()` monta o contexto
+  a partir desses insights (`describeInsights()`) e só então chama o modelo —
+  a instrução de sistema proíbe explicitamente inventar números fora do
+  contexto. Sem `OPENAI_API_KEY` configurada, a função devolve o próprio
+  retrato do salão como resposta, então a página funciona por completo sem
+  nenhuma integração externa.
+* **Histórico por tenant**: cada pergunta/resposta é gravada em `ai_queries`
+  (com RLS própria, como qualquer tabela nova) — útil como auditoria e para,
+  no futuro, alimentar automações a partir de perguntas recorrentes.
