@@ -3,7 +3,7 @@
 > Documento de referência da arquitetura. Descreve as decisões que sustentam
 > todas as fases. O que já está implementado está marcado com ✅; o que está
 > projetado (banco pronto, telas nas próximas fases) com 🚧.
-> **Atualizado após a Fase 2 (MVP operacional).**
+> **Atualizado após a Fase 3 (financeiro, estoque, vendas, comissões, relatórios).**
 
 ---
 
@@ -238,7 +238,7 @@ RBAC com cinco perfis e catálogo de **50 permissões** (`src/lib/rbac`):
 | `/servicos` | ✅ (categorias, preço por profissional, insumos ligados) |
 | `/caixa` | ✅ (abertura, fechamento, sangria, reforço) |
 | `/configuracoes`, `/configuracoes/assinatura`, `/conta`, `/notificacoes`, `/sem-permissao` | ✅ |
-| `/produtos`, `/estoque`, `/vendas`, `/financeiro`, `/comissoes`, `/relatorios` | 🚧 fase 3 |
+| `/produtos`, `/estoque`, `/vendas`, `/financeiro`, `/comissoes`, `/relatorios` | ✅ |
 | `/marketing`, `/whatsapp`, `/fidelidade` | 🚧 fase 4 |
 | `/bella-ia` | 🚧 fase 5 |
 | `/{slug}` agenda online pública | 🚧 fase 4 |
@@ -281,11 +281,20 @@ Implementado ✅
 | `GET /api/health` | `src/app/api/health/route.ts` |
 | `GET /api/fotos/[id]` (fotos protegidas por sessão + RLS) | `src/app/api/fotos/[id]/route.ts` |
 
+Implementado ✅ (Fase 3)
+
+| Ação | Arquivo |
+| --- | --- |
+| CRUD de produtos e categorias, movimentações de estoque | `src/server/actions/products.ts`, `src/server/actions/inventory.ts` |
+| Vendas (PDV) com baixa automática de estoque | `src/server/actions/sales.ts` |
+| Lançamentos financeiros (receitas/despesas) | `src/server/actions/finance.ts` |
+| Fechamento mensal de comissões | `src/server/actions/commissions.ts` |
+| Relatórios exportáveis (PDF/Excel/CSV) | `src/app/api/relatorios/` |
+
 Previsto 🚧
 
 | Fase | Interface |
 | --- | --- |
-| 3 | vendas (PDV), estoque com baixa automática, financeiro, comissões (fechamento mensal), relatórios exportáveis (PDF/Excel/CSV) |
 | 4 | `POST /api/webhooks/whatsapp`, envio de templates, agenda online pública |
 | 5 | `POST /api/ai/ask` (consulta restrita ao tenant), insights |
 | 6 | `POST /api/webhooks/mercadopago`, checkout, troca de plano, painel do SaaS |
@@ -310,7 +319,7 @@ Migrações rodam pela conexão do dono (`DIRECT_DATABASE_URL`); a aplicação u
 | --- | --- | --- |
 | 1 | Projeto, autenticação, multi-tenant, RBAC, layout, dashboard | ✅ |
 | 2 | Agenda (dia/semana, arrastar e soltar, finalização com pagamento), clientes (ficha capilar, histórico químico, fotos, importação), profissionais (jornada, produtividade), serviços, caixa | ✅ |
-| 3 | Financeiro, comissões (fechamento mensal), estoque com baixa automática, produtos, vendas (PDV), relatórios exportáveis | 🚧 |
+| 3 | Financeiro, comissões (fechamento mensal), estoque com baixa automática, produtos, vendas (PDV), relatórios exportáveis | ✅ |
 | 4 | WhatsApp, agenda online, CRM/campanhas, fidelidade | 🚧 |
 | 5 | Bella IA, insights, automações | 🚧 |
 | 6 | Assinaturas (Mercado Pago), planos, painel administrativo do SaaS | 🚧 |

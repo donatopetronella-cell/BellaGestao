@@ -336,6 +336,19 @@ export async function resolveServicePricing(
   })
 }
 
+export async function listServiceOptions(
+  tenantId: string,
+): Promise<Array<{ id: string; name: string; price: number }>> {
+  const rows = await withTenant(tenantId, (tx) =>
+    tx.service.findMany({
+      where: { tenantId, deletedAt: null, isActive: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, price: true },
+    }),
+  )
+  return rows.map((row) => ({ id: row.id, name: row.name, price: Number(row.price) }))
+}
+
 export async function listServiceCategories(
   tenantId: string,
 ): Promise<Array<{ id: string; name: string; serviceCount: number }>> {
