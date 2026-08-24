@@ -38,6 +38,18 @@ export function formatTime(value: Date | string, timeZone = 'America/Sao_Paulo')
   }).format(date)
 }
 
+export function formatDateTime(
+  value: Date | string,
+  timeZone = 'America/Sao_Paulo',
+): string {
+  const date = typeof value === 'string' ? new Date(value) : value
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone,
+  }).format(date)
+}
+
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'

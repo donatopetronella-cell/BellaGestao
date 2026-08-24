@@ -19,6 +19,7 @@ const schema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
   MERCADO_PAGO_ACCESS_TOKEN: z.string().optional(),
 })
 

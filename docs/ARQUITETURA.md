@@ -3,7 +3,7 @@
 > Documento de referência da arquitetura. Descreve as decisões que sustentam
 > todas as fases. O que já está implementado está marcado com ✅; o que está
 > projetado (banco pronto, telas nas próximas fases) com 🚧.
-> **Atualizado após a Fase 3 (financeiro, estoque, vendas, comissões, relatórios).**
+> **Atualizado após a Fase 4 (WhatsApp, agenda online, marketing, fidelidade).**
 
 ---
 
@@ -239,9 +239,9 @@ RBAC com cinco perfis e catálogo de **50 permissões** (`src/lib/rbac`):
 | `/caixa` | ✅ (abertura, fechamento, sangria, reforço) |
 | `/configuracoes`, `/configuracoes/assinatura`, `/conta`, `/notificacoes`, `/sem-permissao` | ✅ |
 | `/produtos`, `/estoque`, `/vendas`, `/financeiro`, `/comissoes`, `/relatorios` | ✅ |
-| `/marketing`, `/whatsapp`, `/fidelidade` | 🚧 fase 4 |
+| `/marketing`, `/whatsapp`, `/fidelidade` | ✅ |
+| `/{slug}` agenda online pública | ✅ |
 | `/bella-ia` | 🚧 fase 5 |
-| `/{slug}` agenda online pública | 🚧 fase 4 |
 | `/admin/*` painel do SaaS | 🚧 fase 6 |
 
 As rotas 🚧 já existem, já exigem a permissão correta e mostram o que está
@@ -291,11 +291,20 @@ Implementado ✅ (Fase 3)
 | Fechamento mensal de comissões | `src/server/actions/commissions.ts` |
 | Relatórios exportáveis (PDF/Excel/CSV) | `src/app/api/relatorios/` |
 
+Implementado ✅ (Fase 4)
+
+| Ação | Arquivo |
+| --- | --- |
+| CRUD de modelos WhatsApp, envio manual e via campanha | `src/server/actions/whatsapp.ts`, `src/lib/whatsapp.ts` |
+| `GET/POST /api/webhooks/whatsapp` (handshake + status/entrada) | `src/app/api/webhooks/whatsapp/route.ts` |
+| Campanhas (reativação, aniversariantes, base completa) | `src/server/actions/campaigns.ts` |
+| Programa de fidelidade e lançamentos manuais de pontos | `src/server/actions/loyalty.ts` |
+| Agenda online pública (`/{slug}`), sem sessão, com limite de tentativas | `src/server/actions/booking.ts` |
+
 Previsto 🚧
 
 | Fase | Interface |
 | --- | --- |
-| 4 | `POST /api/webhooks/whatsapp`, envio de templates, agenda online pública |
 | 5 | `POST /api/ai/ask` (consulta restrita ao tenant), insights |
 | 6 | `POST /api/webhooks/mercadopago`, checkout, troca de plano, painel do SaaS |
 
@@ -320,7 +329,7 @@ Migrações rodam pela conexão do dono (`DIRECT_DATABASE_URL`); a aplicação u
 | 1 | Projeto, autenticação, multi-tenant, RBAC, layout, dashboard | ✅ |
 | 2 | Agenda (dia/semana, arrastar e soltar, finalização com pagamento), clientes (ficha capilar, histórico químico, fotos, importação), profissionais (jornada, produtividade), serviços, caixa | ✅ |
 | 3 | Financeiro, comissões (fechamento mensal), estoque com baixa automática, produtos, vendas (PDV), relatórios exportáveis | ✅ |
-| 4 | WhatsApp, agenda online, CRM/campanhas, fidelidade | 🚧 |
+| 4 | WhatsApp, agenda online, CRM/campanhas, fidelidade | ✅ |
 | 5 | Bella IA, insights, automações | 🚧 |
 | 6 | Assinaturas (Mercado Pago), planos, painel administrativo do SaaS | 🚧 |
 
@@ -349,3 +358,30 @@ Migrações rodam pela conexão do dono (`DIRECT_DATABASE_URL`); a aplicação u
   nunca autoridade.
 * **Caixa**: `computeExpectedCash()` soma apenas movimentações em dinheiro; o
   fechamento registra a diferença entre o valor contado e o esperado.
+
+### Fase 4 — destaques de implementação
+
+* **WhatsApp**: `WhatsappSender` (`src/lib/whatsapp.ts`) segue o mesmo padrão
+  do `StorageDriver` — um driver `console` em desenvolvimento (grava no log,
+  não sai da máquina) e a WhatsApp Cloud API real quando
+  `WHATSAPP_ACCESS_TOKEN`/`WHATSAPP_PHONE_NUMBER_ID` estão configurados.
+  Hoje é **um número por plataforma**, não por salão; o webhook casa eventos
+  de entrada com o tenant certo pelo `providerMessageId` (status) ou pelo
+  telefone do cliente (mensagem recebida) — melhor esforço até cada salão ter
+  seu próprio número.
+* **Campanhas**: filtros resolvidos em `resolveTargets()`
+  (`src/features/campaigns/service.ts`) — reativação por dias sem retornar,
+  aniversariantes do mês, ou toda a base — sempre restritos a clientes com
+  `marketingConsent` e telefone cadastrado. Enviar cria um `CampaignTarget` e
+  uma `WhatsappMessage` por cliente e despacha na hora; uma campanha só pode
+  ser enviada uma vez (`DRAFT` → `RUNNING` → `FINISHED`).
+* **Fidelidade**: a página edita o `LoyaltyProgram` (pontos, cashback ou
+  número de atendimentos) e lança créditos/resgates manuais
+  (`adjustLoyaltyAccount`), com o mesmo saldo que `finishAppointment` (Fase 2)
+  credita automaticamente no modo pontos.
+* **Agenda online (`/{slug}`)**: página pública fora do grupo `(app)`, sem
+  sessão. Resolve o salão pelo `slug` via `adminDb` (não há tenant no
+  contexto ainda) e, a partir daí, usa `withTenant` como o resto do app.
+  Reaproveita `getAvailableSlots`/`createAppointment` da agenda interna com
+  `source: 'ONLINE'`; encontra a cliente pelo telefone ou cadastra uma nova.
+  Limitada por `rateLimit()` (5 agendamentos / 5 min por IP).
