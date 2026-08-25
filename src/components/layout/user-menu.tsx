@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { LogOut, Settings, UserRound } from 'lucide-react'
+import { LogOut, Settings, ShieldCheck, UserRound } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,11 +18,13 @@ export function UserMenu({
   email,
   roleLabel,
   avatarUrl,
+  isPlatformAdmin = false,
 }: {
   name: string
   email: string
   roleLabel: string
   avatarUrl?: string | null
+  isPlatformAdmin?: boolean
 }) {
   return (
     <DropdownMenu>
@@ -47,6 +49,16 @@ export function UserMenu({
             <Settings className="size-4" /> Configurações
           </Link>
         </DropdownMenuItem>
+        {isPlatformAdmin ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/admin">
+                <ShieldCheck className="size-4" /> Painel Admin
+              </Link>
+            </DropdownMenuItem>
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <form action={logoutAction} className="w-full">

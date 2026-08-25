@@ -2,9 +2,10 @@ import type { Metadata } from 'next'
 import { Check } from 'lucide-react'
 import { requirePermission } from '@/lib/auth/context'
 import { getTenantSubscription, listPublicPlans } from '@/features/billing/queries'
+import { CheckoutButton } from '@/features/billing/components/checkout-button'
 import { PageHeader } from '@/components/layout/page-header'
+import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -16,8 +17,22 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Assinatura' }
 
-export default async function SubscriptionPage() {
+const STATUS_BANNER: Record<string, { variant: 'success' | 'info' | 'error'; text: string }> = {
+  success: { variant: 'success', text: 'Pagamento confirmado! Sua assinatura foi atualizada.' },
+  pending: { variant: 'info', text: 'Pagamento em processamento. Assim que for aprovado, atualizamos aqui.' },
+  failure: { variant: 'error', text: 'O pagamento não foi concluído. Tente novamente.' },
+}
+
+export default async function SubscriptionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>
+}) {
   const context = await requirePermission('billing.view')
+  const canManage = context.permissions.has('billing.manage')
+  const { status } = await searchParams
+  const banner = status ? STATUS_BANNER[status] : undefined
+
   const [subscription, plans] = await Promise.all([
     getTenantSubscription(context.tenant.id),
     listPublicPlans(),
@@ -29,6 +44,12 @@ export default async function SubscriptionPage() {
         title="Assinatura"
         description="Plano atual, período de teste e opções disponíveis."
       />
+
+      {banner ? (
+        <Alert variant={banner.variant} className="mb-6">
+          {banner.text}
+        </Alert>
+      ) : null}
 
       <Card className="mb-6">
         <CardHeader>
@@ -48,12 +69,6 @@ export default async function SubscriptionPage() {
               : 'Assinatura recorrente.'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-[var(--muted-foreground)]">
-            O checkout com Mercado Pago (e a estrutura para Stripe) entra na fase
-            6. Durante o teste, todos os recursos do plano ficam liberados.
-          </p>
-        </CardContent>
       </Card>
 
       <div className="grid gap-5 lg:grid-cols-3">
@@ -78,9 +93,7 @@ export default async function SubscriptionPage() {
                     </li>
                   ))}
                 </ul>
-                <Button className="w-full" variant="outline" disabled>
-                  {current ? 'Plano atual' : 'Disponível na fase 6'}
-                </Button>
+                {canManage ? <CheckoutButton planCode={plan.code} current={current} /> : null}
               </CardContent>
             </Card>
           )

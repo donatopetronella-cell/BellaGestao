@@ -341,7 +341,7 @@ Migrações rodam pela conexão do dono (`DIRECT_DATABASE_URL`); a aplicação u
 | 3 | Financeiro, comissões (fechamento mensal), estoque com baixa automática, produtos, vendas (PDV), relatórios exportáveis | ✅ |
 | 4 | WhatsApp, agenda online, CRM/campanhas, fidelidade | ✅ |
 | 5 | Bella IA, insights, automações | ✅ |
-| 6 | Assinaturas (Mercado Pago), planos, painel administrativo do SaaS | 🚧 |
+| 6 | Assinaturas (Mercado Pago), planos, painel administrativo do SaaS | ✅ |
 
 ### Fase 2 — destaques de implementação
 
@@ -412,3 +412,29 @@ Migrações rodam pela conexão do dono (`DIRECT_DATABASE_URL`); a aplicação u
 * **Histórico por tenant**: cada pergunta/resposta é gravada em `ai_queries`
   (com RLS própria, como qualquer tabela nova) — útil como auditoria e para,
   no futuro, alimentar automações a partir de perguntas recorrentes.
+
+### Fase 6 — destaques de implementação
+
+* **Gateway de pagamento no mesmo padrão de driver**: `getPaymentGateway()`
+  (`src/lib/mercadopago.ts`) segue `WhatsappSender`/`StorageDriver` — driver
+  `manual` em desenvolvimento (sem rede, redireciona para
+  `/api/dev/simulate-payment`) e Checkout Pro (`preference`) do Mercado Pago
+  quando `MERCADO_PAGO_ACCESS_TOKEN` está configurada. Cobrança recorrente é
+  modelada na aplicação (um `Payment` por ciclo, `Subscription` estendida a
+  cada webhook confirmado), não via `preapproval` — mantém a integração em
+  `fetch` puro, sem SDK.
+* **Troca de plano é decidida no checkout, aplicada no webhook**:
+  `createCheckoutSession()` grava `planCode`/`billingCycle` no `payload` do
+  `Payment` pendente; `applyRemotePayment()` só troca o `planId` da
+  `Subscription` quando o pagamento chega `APPROVED` — nunca antes, e nunca a
+  partir de dado que o cliente possa manipular no navegador.
+* **Webhook idempotente por design**: `POST /api/webhooks/mercadopago`
+  grava o evento em `webhook_events` (chave única `[provider, eventId]`)
+  *antes* de processar — reentrega do Mercado Pago é sempre um no-op seguro,
+  e falhas de processamento ficam registradas em `.error` para inspeção
+  manual em vez de retry cego.
+* **Painel admin é `getAdminDb()`, não `withTenant`**: as rotas em
+  `src/app/(admin)/admin/*` são propositalmente cross-tenant, guardadas por
+  `requirePlatformAdmin()` (checa `User.isPlatformAdmin`, não a matriz de RBAC
+  por tenant) — reforça o comentário que já existia em `src/lib/db/prisma.ts`
+  antecipando exatamente esse uso do cliente com `BYPASSRLS`.

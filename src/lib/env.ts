@@ -21,6 +21,7 @@ const schema = z.object({
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
   MERCADO_PAGO_ACCESS_TOKEN: z.string().optional(),
+  MERCADO_PAGO_WEBHOOK_SECRET: z.string().optional(),
 })
 
 export type Env = z.infer<typeof schema>

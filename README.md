@@ -4,13 +4,12 @@ Plataforma SaaS multiempresa de gestão para salões de beleza, cabeleireiros,
 manicures, nail designers, designers de sobrancelha, maquiadores, esteticistas,
 spas, studios e profissionais autônomos.
 
-> **Estado atual: Fases 1 (Fundação) e 2 (MVP operacional) concluídas.**
-> Autenticação, isolamento multi-tenant com Row Level Security, RBAC, layout
-> responsivo, onboarding, dashboard, agenda (dia/semana, arrastar e soltar),
-> clientes (CRM, ficha capilar, histórico químico, fotos, importação CSV),
-> profissionais, serviços e caixa — tudo com dados reais do banco.
-> O modelo de dados completo (56 tabelas) já está migrado; os módulos das
-> fases 3 a 6 estão mapeados em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
+> **Estado atual: Fases 1 a 6 concluídas — roadmap completo.**
+> Autenticação, isolamento multi-tenant com Row Level Security, RBAC, agenda,
+> clientes, financeiro, estoque, vendas, WhatsApp, agenda online, CRM,
+> fidelidade, Bella IA e assinaturas via Mercado Pago com painel
+> administrativo do SaaS — tudo com dados reais do banco. Detalhes de cada
+> fase em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
 ---
 

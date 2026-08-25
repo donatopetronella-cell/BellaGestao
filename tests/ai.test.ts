@@ -10,6 +10,22 @@ describe('bella ia', () => {
   beforeAll(async () => {
     tenant = await createTestTenant('bella-ia')
     await createTestAppointment(tenant, { status: 'FINISHED', total: 150 })
+    // `revenueMonth` is derived from `Sale`, not `Appointment` — in the real
+    // app `finishAppointment()` creates the sale alongside the FINISHED
+    // status. `createTestAppointment` only inserts the appointment, so the
+    // matching paid sale is created here to ground the insight.
+    await getAdminDb().sale.create({
+      data: {
+        tenantId: tenant.tenantId,
+        branchId: tenant.branchId,
+        clientId: tenant.clientId,
+        professionalId: tenant.professionalId,
+        number: 1,
+        subtotal: 150,
+        total: 150,
+        status: 'PAID',
+      },
+    })
   })
 
   afterAll(async () => {

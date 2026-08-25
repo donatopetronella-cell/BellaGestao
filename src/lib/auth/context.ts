@@ -186,6 +186,22 @@ export async function requireAuth(): Promise<AuthContext> {
   return context
 }
 
+/**
+ * Server components / actions: user must be a platform admin. Uses
+ * `requireAuth`, not `requireTenant` — the admin panel is cross-tenant and
+ * an admin may have no salon membership at all.
+ */
+export async function requirePlatformAdmin(): Promise<AuthContext> {
+  const context = await requireAuth()
+  if (!context.user.isPlatformAdmin) redirect('/painel')
+  return context
+}
+
+/** Same as `requirePlatformAdmin`, but throws instead of redirecting (API routes/actions). */
+export function assertPlatformAdmin(context: Pick<AuthContext, 'user'>): void {
+  if (!context.user.isPlatformAdmin) throw forbidden()
+}
+
 /** Server components / actions: user must be signed in AND inside a salon. */
 export async function requireTenant(): Promise<TenantContext> {
   const context = await requireAuth()

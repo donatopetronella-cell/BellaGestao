@@ -77,6 +77,7 @@ export default async function AppLayout({
               email={context.user.email}
               avatarUrl={context.user.avatarUrl}
               roleLabel={ROLE_LABELS[context.role]}
+              isPlatformAdmin={context.user.isPlatformAdmin}
             />
           </div>
         </div>
